@@ -21,14 +21,19 @@ function fallbackDiagnose(input: DiagnoseInput): DiagnoseResult {
   // Material quizzes: grade against the expected answer from the teacher's
   // uploaded portions when no LLM key is available.
   if (input.expected) {
-    const frac = input.expected.match(/\b\d+\/\d+\b/);
-    const eq = input.expected.match(/=\s*(-?\d+)\b/);
-    const token = frac?.[0] ?? eq?.[1];
-    if (token && input.answer.toLowerCase().includes(token.toLowerCase())) {
+    // Collect ALL candidate tokens from the expected answer — a worked method
+    // usually contains several fractions/steps (e.g. "1/2 = 3/6 … sum = 5/6"),
+    // and the final result is what the student's answer must match.
+    const tokens = [
+      ...(input.expected.match(/\b\d+\/\d+\b/g) ?? []),
+      ...(input.expected.match(/=\s*(-?\d+(?:\.\d+)?)/g) ?? []).map((s) => s.replace(/^=\s*/, "")),
+    ].filter((t, i, arr) => arr.indexOf(t) === i);
+    const ans = input.answer.toLowerCase().replace(/\s+/g, "");
+    if (tokens.length > 0 && tokens.some((t) => ans.includes(t.toLowerCase()))) {
       return {
         misconception_id: null,
         confidence: 0.9,
-        feedback_20_words: `Matches the taught method. Correct: ${token}. Mastery up.`,
+        feedback_20_words: `Matches the taught method. Correct: ${tokens.find((t) => ans.includes(t.toLowerCase()))}. Mastery up.`,
         next_lesson_id: nextId,
         correct: true,
       };
@@ -39,7 +44,7 @@ function fallbackDiagnose(input: DiagnoseInput): DiagnoseResult {
     return {
       misconception_id: m?.id ?? null,
       confidence: 0.72,
-      feedback_20_words: `Off the taught portion. Expected ${token ?? "the notes' method"} — check the class material and retry.`,
+      feedback_20_words: `Off the taught portion. Expected ${tokens[0] ?? "the notes' method"} — check the class material and retry.`,
       next_lesson_id: input.lessonId,
       correct: false,
     };

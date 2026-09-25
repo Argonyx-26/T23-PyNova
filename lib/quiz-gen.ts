@@ -91,6 +91,9 @@ function fractionProblem(topic: CourseTopic, idx: number): GeneratedQuestion | n
 export function generateQuestionsFromTopics(topics: CourseTopic[]): GeneratedQuestion[] {
   const out: GeneratedQuestion[] = [];
   let idx = 0;
+  // Global pool of key clauses across ALL uploaded portions — lets short
+  // topics still get real distractors drawn from the class material.
+  const globalClauses = topics.flatMap((t) => splitSentences(t.material).slice(0, 6).map(keyClause));
   for (const topic of topics) {
     const fp = fractionProblem(topic, idx);
     if (fp) out.push(fp);
@@ -98,11 +101,15 @@ export function generateQuestionsFromTopics(topics: CourseTopic[]): GeneratedQue
     const sentences = splitSentences(topic.material).slice(0, 6);
     for (const sentence of sentences.slice(0, 2)) {
       const clause = keyClause(sentence);
-      // Distractors: clauses from other sentences of the same material.
-      const others = sentences.filter((s) => s !== sentence).map(keyClause);
-      if (others.length < 2) continue;
+      // Distractors: clauses from other sentences of the same material first,
+      // then from the rest of the uploaded portions.
+      const localOthers = sentences.filter((s) => s !== sentence).map(keyClause);
+      const poolOthers = globalClauses.filter((c) => c !== clause && !localOthers.includes(c));
+      const others = [...localOthers, ...poolOthers];
+      if (others.length < 1) continue;
       const wrong = shuffleStable(others, idx + 11).slice(0, 3);
-      while (wrong.length < 3) wrong.push("None of the above");
+      const fillers = ["None of the above", "Cannot be determined from the portion", "Not covered in class"];
+      while (wrong.length < 3) wrong.push(fillers[wrong.length % fillers.length]);
       // When the clause is the whole sentence (no colon), ask which rule
       // comes from the portion instead of an awkward blank fill.
       const stem =

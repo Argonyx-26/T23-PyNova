@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
   const vectors = await embedTexts(chunks, apiKey);
 
   const supabase = getSupabaseAdmin();
+  let supabaseDown = false;
   if (supabase) {
     const { data: mat, error: matErr } = await supabase
       .from("materials")
@@ -82,27 +83,32 @@ export async function POST(request: NextRequest) {
       .select("id")
       .single();
     if (matErr || !mat) {
-      return Response.json({ error: `Supabase insert failed: ${matErr?.message ?? "unknown"}` }, { status: 500 });
+      // DB unreachable/unmigrated — fall through to demo mode rather than
+      // failing the teacher's upload mid-demo.
+      supabaseDown = true;
+    } else {
+      const rows = chunks.map((content, i) => ({
+        material_id: mat.id as string,
+        chunk_index: i,
+        content,
+        embedding: JSON.stringify(vectors[i]),
+      }));
+      const { error: chunkErr } = await supabase.from("material_chunks").insert(rows);
+      if (chunkErr) {
+        supabaseDown = true;
+      } else {
+        return Response.json(
+          {
+            ok: true,
+            mode: "supabase",
+            material: { id: mat.id, title, subject, sourceType, chunks: chunks.length },
+          },
+          { status: 201 },
+        );
+      }
     }
-    const rows = chunks.map((content, i) => ({
-      material_id: mat.id as string,
-      chunk_index: i,
-      content,
-      embedding: JSON.stringify(vectors[i]),
-    }));
-    const { error: chunkErr } = await supabase.from("material_chunks").insert(rows);
-    if (chunkErr) {
-      return Response.json({ error: `Chunk insert failed: ${chunkErr.message}` }, { status: 500 });
-    }
-    return Response.json(
-      {
-        ok: true,
-        mode: "supabase",
-        material: { id: mat.id, title, subject, sourceType, chunks: chunks.length },
-      },
-      { status: 201 },
-    );
   }
+  if (supabaseDown) console.warn("[materials] Supabase unavailable — falling back to in-memory store");
 
   // ---- Demo mode (no Supabase): persist to in-memory course-store ----
   const { addTopic } = await import("@/lib/course-store");
@@ -129,10 +135,11 @@ export async function GET() {
       .select("id, title, subject, source_type, char_count, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ mode: "supabase", materials: data });
+    if (!error) return Response.json({ mode: "supabase", materials: data });
+    console.warn("[materials] Supabase read failed — falling back to in-memory store:", error.message);
   }
-  const { listTopics } = await import("@/lib/course-store");
+  const { listTopics, seedDefaultMaterial } = await import("@/lib/course-store");
+  seedDefaultMaterial();
   const topics = listTopics().map((t) => ({
     id: t.id,
     title: t.title,

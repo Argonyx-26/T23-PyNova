@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
   let chunkRows: ChunkRow[] = [];
 
+  let useSupabase = Boolean(supabase);
   if (supabase) {
     // Fast path: pgvector similarity search when a topic is provided.
     if (topic) {
@@ -55,15 +56,23 @@ export async function GET(request: NextRequest) {
       }
     }
     // Fallback: latest material's chunks.
-    const { data } = await supabase
+    const { data, error: chunkErr } = await supabase
       .from("material_chunks")
       .select("id, material_id, content, materials(title)")
       .order("created_at", { ascending: false })
       .limit(40);
-    chunkRows = (data as unknown as ChunkRow[]) ?? [];
-  } else {
+    if (chunkErr) {
+      console.warn("[quiz/rag] Supabase read failed — falling back to in-memory store:", chunkErr.message);
+      useSupabase = false;
+      chunkRows = [];
+    } else {
+      chunkRows = (data as unknown as ChunkRow[]) ?? [];
+    }
+  }
+  if (!useSupabase) {
     // ---- Demo mode: in-memory course-store ----
-    const { listTopics } = await import("@/lib/course-store");
+    const { listTopics, seedDefaultMaterial } = await import("@/lib/course-store");
+    seedDefaultMaterial();
     const topics = listTopics();
     if (topics.length > 0) {
       chunkRows = topics.flatMap((t) =>
@@ -92,7 +101,7 @@ export async function GET(request: NextRequest) {
   });
   const retrieved = scored.sort((a, b) => b.similarity - a.similarity).slice(0, 8);
 
-  return await respond(retrieved, count, apiKey, topic, supabase ? "supabase" : "demo");
+  return await respond(retrieved, count, apiKey, topic, useSupabase ? "supabase" : "demo");
 }
 
 async function respond(
