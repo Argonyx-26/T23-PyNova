@@ -1,0 +1,14 @@
+{
+  "frac-add": ["2/5", "add top", "add straight", "numerator denominator straight", "top bottom add"],
+  "frac-equiv": ["1/8", "bigger bottom bigger", "8 > 4 so"],
+  "frac-mult": ["common denominator multiply", "need common denominator to multiply"],
+  "frac-div": ["flip first", "divide straight", "keep first flip"],
+  "frac-dec": ["0.38", "longer decimal bigger"],
+  "alg-sign": ["x = 5", "keep sign", "move across keep"],
+  "alg-dist": ["2x + 3", "distribute first only"],
+  "alg-like": ["5x", "3x + 2 = 5x", "combine unlike"],
+  "alg-eq": ["one side only", "add one side"],
+  "bio-photo": ["soil", "food from roots", "eat soil"],
+  "bio-resp": ["don't breathe", "only animals respire", "plants don't respire"],
+  "bio-cell": ["flat", "all cells have wall", "static bag"]
+}

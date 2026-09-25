@@ -1,0 +1,44 @@
+{
+  "misconceptions": [
+    { "id": "frac-add", "subject": "fractions", "title": "Add numerators and denominators straight", "keywords": ["add top bottom", "numerator denominator straight", "1/2 + 1/3 = 2/5"], "lessonId": "frac-1", "quizIds": ["q-frac-1"] },
+    { "id": "frac-equiv", "subject": "fractions", "title": "Bigger denominator means bigger fraction", "keywords": ["bigger bottom bigger", "1/8 > 1/4"], "lessonId": "frac-2", "quizIds": ["q-frac-2"] },
+    { "id": "frac-mult", "subject": "fractions", "title": "Multiply needs common denominator", "keywords": ["common denominator multiply", "cross multiply always"], "lessonId": "frac-3", "quizIds": ["q-frac-3"] },
+    { "id": "frac-div", "subject": "fractions", "title": "Divide by flipping wrong fraction", "keywords": ["flip first", "divide straight across"], "lessonId": "frac-4", "quizIds": ["q-frac-4"] },
+    { "id": "frac-dec", "subject": "fractions", "title": "Fraction-decimal place confusion", "keywords": ["1/10 = 0.1?", "decimal longer bigger"], "lessonId": "frac-5", "quizIds": ["q-frac-5"] },
+    { "id": "alg-sign", "subject": "algebra", "title": "Sign error moving terms", "keywords": ["move across keep sign", "x - 5 = 10 so x = 5"], "lessonId": "alg-1", "quizIds": ["q-alg-1"] },
+    { "id": "alg-dist", "subject": "algebra", "title": "Distribute to first term only", "keywords": ["2(x + 3) = 2x + 3"], "lessonId": "alg-2", "quizIds": ["q-alg-2"] },
+    { "id": "alg-like", "subject": "algebra", "title": "Combine unlike terms", "keywords": ["3x + 2 = 5x"], "lessonId": "alg-3", "quizIds": ["q-alg-3"] },
+    { "id": "alg-eq", "subject": "algebra", "title": "Do to one side only", "keywords": ["add one side", "balance ignore"], "lessonId": "alg-4", "quizIds": ["q-alg-4"] },
+    { "id": "bio-photo", "subject": "biology", "title": "Plants eat soil not light", "keywords": ["plants eat soil", "photosynthesis food from roots"], "lessonId": "bio-1", "quizIds": ["q-bio-1"] },
+    { "id": "bio-resp", "subject": "biology", "title": "Respiration only in animals", "keywords": ["plants don't breathe", "only animals respire"], "lessonId": "bio-2", "quizIds": ["q-bio-2"] },
+    { "id": "bio-cell", "subject": "biology", "title": "Cells are flat static bags", "keywords": ["cells flat", "cell wall all cells"], "lessonId": "bio-3", "quizIds": ["q-bio-3"] }
+  ],
+  "lessons": [
+    { "id": "frac-1", "title": "Common Denominator Quest", "content": "Find LCM, rewrite, then add tops.", "nextLessonId": "frac-2", "x": 0, "y": 0 },
+    { "id": "frac-2", "title": "Size Sense Swamp", "content": "Same top: smaller bottom wins.", "nextLessonId": "frac-3", "x": 1, "y": 0 },
+    { "id": "frac-3", "title": "Multiply Peaks", "content": "Tops times tops, bottoms times bottoms.", "nextLessonId": "frac-4", "x": 2, "y": 0 },
+    { "id": "frac-4", "title": "Divide Dungeon", "content": "Flip second, then multiply.", "nextLessonId": "frac-5", "x": 0, "y": 1 },
+    { "id": "frac-5", "title": "Decimal Bridge", "content": "Divide top by bottom for decimal.", "nextLessonId": "alg-1", "x": 1, "y": 1 },
+    { "id": "alg-1", "title": "Sign Switch Forest", "content": "Move term, flip sign.", "nextLessonId": "alg-2", "x": 2, "y": 1 },
+    { "id": "alg-2", "title": "Distribute Falls", "content": "Multiply outside to every inside term.", "nextLessonId": "alg-3", "x": 0, "y": 2 },
+    { "id": "alg-3", "title": "Like-Term Lake", "content": "Only same letters combine.", "nextLessonId": "alg-4", "x": 1, "y": 2 },
+    { "id": "alg-4", "title": "Balance Boss", "content": "Both sides same move.", "nextLessonId": "bio-1", "x": 2, "y": 2 },
+    { "id": "bio-1", "title": "Light Eater Grove", "content": "Light + CO2 makes food.", "nextLessonId": "bio-2", "x": 0, "y": 3 },
+    { "id": "bio-2", "title": "Breath Cave", "content": "Plants respire too, day and night.", "nextLessonId": "bio-3", "x": 1, "y": 3 },
+    { "id": "bio-3", "title": "Cell City", "content": "3D factories, walls only in plants.", "nextLessonId": null, "x": 2, "y": 3 }
+  ],
+  "quizzes": [
+    { "id": "q-frac-1", "lessonId": "frac-1", "prompt": "1/2 + 1/3 = ? Explain steps.", "misconceptionId": "frac-add" },
+    { "id": "q-frac-2", "lessonId": "frac-2", "prompt": "Which bigger: 1/4 or 1/8? Why?", "misconceptionId": "frac-equiv" },
+    { "id": "q-frac-3", "lessonId": "frac-3", "prompt": "2/3 × 3/4 = ? Need common denominator?", "misconceptionId": "frac-mult" },
+    { "id": "q-frac-4", "lessonId": "frac-4", "prompt": "1/2 ÷ 3/4 = ? What flips?", "misconceptionId": "frac-div" },
+    { "id": "q-frac-5", "lessonId": "frac-5", "prompt": "Write 3/8 as decimal. How?", "misconceptionId": "frac-dec" },
+    { "id": "q-alg-1", "lessonId": "alg-1", "prompt": "Solve x - 5 = 10. Show move.", "misconceptionId": "alg-sign" },
+    { "id": "q-alg-2", "lessonId": "alg-2", "prompt": "Expand 2(x + 3). Steps?", "misconceptionId": "alg-dist" },
+    { "id": "q-alg-3", "lessonId": "alg-3", "prompt": "Simplify 3x + 2. Can you?", "misconceptionId": "alg-like" },
+    { "id": "q-alg-4", "lessonId": "alg-4", "prompt": "Solve 2x = x + 7. Moves?", "misconceptionId": "alg-eq" },
+    { "id": "q-bio-1", "lessonId": "bio-1", "prompt": "Where do plants get food mass?", "misconceptionId": "bio-photo" },
+    { "id": "q-bio-2", "lessonId": "bio-2", "prompt": "Do plants respire? When?", "misconceptionId": "bio-resp" },
+    { "id": "q-bio-3", "lessonId": "bio-3", "prompt": "Describe cell shape and wall.", "misconceptionId": "bio-cell" }
+  ]
+}

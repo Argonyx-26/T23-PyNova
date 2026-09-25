@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Env files (keep .env.example)
+.env
+.env.local
+.env*.local
+
+# TypeScript / tooling caches
+*.tsbuildinfo
+.eslintcache
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Freebuff agent workspace files
+.freebuff/
