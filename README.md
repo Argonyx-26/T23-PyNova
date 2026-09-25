@@ -10,15 +10,36 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Optional — live LLM diagnostics (the demo works fully without it):
+Optional integrations (the demo works fully without any of them):
 
 ```bash
 cp .env.example .env.local
-# paste your key into GEMINI_API_KEY
+# GEMINI_API_KEY          → live AI grading, embeddings, quiz generation
+# NEXT_PUBLIC_SUPABASE_*  → Postgres + pgvector persistence + auth
+# SUPABASE_SERVICE_ROLE_KEY → server-side writes
 ```
 
-Without a key, the deterministic keyword fallback diagnoses misconceptions locally — same
-verdicts, zero cost, zero network.
+### Supabase + RAG setup (PDFs → accurate quizzes)
+
+1. Create a project at [supabase.com](https://supabase.com), copy the URL + keys into `.env.local`.
+2. Open **SQL Editor** and run **`supabase/schema.sql`** once (enables pgvector, creates
+   `materials`, `material_chunks`, `quizzes`, `diagnoses`, the `match_material_chunks`
+   similarity RPC, indexes and RLS policies).
+3. Restart the dev server. The teacher portal's upload panel now accepts **PDFs or text**:
+   extract → chunk (800-char windows) → embed (Gemini `text-embedding-004`, 768-dim) →
+   store in pgvector.
+4. Student quizzes are then **retrieval-grounded**: the topically-similar chunks are fetched
+   via cosine search and the quiz is generated strictly from that context, with citations
+   shown on every question. Grading anchors to the retrieved passage.
+
+Without Supabase, the same pipeline runs against an in-memory demo store with deterministic
+hash embeddings — identical UX, zero external dependencies.
+
+### Auth
+
+`/login` offers passwordless magic-link sign-in via Supabase. Portal headers show a
+sign-in button / user chip once `NEXT_PUBLIC_SUPABASE_*` is configured; without it the
+portals run in demo mode with no auth wall.
 
 ## The 60-second demo flow
 
@@ -43,8 +64,10 @@ verdicts, zero cost, zero network.
 | `/parent` | Family transparency | Mastery report, live class pulse, cost audit, print stylesheet |
 | `/api/diagnose` | Reasoning grader | 1 Gemini call per answer, grades against the teacher's uploaded portions, 3s timeout, deterministic fallback |
 | `/api/class-state` | Shared world state | GET snapshot, SSE stream, POST events, DELETE reset |
-| `/api/course-content` | Teacher material | Upload/list/delete class portions (validated, rate-limited) |
-| `/api/quiz-from-material` | Portions quiz generator | Derives playable MCQs + expected answers from the uploaded material |
+| `/api/materials` | Teacher material | PDF/text upload → extract → chunk → embed → Supabase pgvector (rate-limited) |
+| `/api/quiz/rag` | RAG quiz generator | Cosine retrieval over embedded chunks → grounded MCQs with citations |
+| `/login`, `/auth/callback` | Supabase auth | Passwordless magic links, session exchange |
+| `/api/quiz-from-material`, `/api/course-content` | Legacy demo pipeline | Still available; superseded by `/api/materials` + `/api/quiz/rag` |
 
 ### Teacher-uploaded portions → student quizzes
 

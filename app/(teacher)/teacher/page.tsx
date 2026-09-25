@@ -67,7 +67,9 @@ export default function TeacherPage() {
   const [matTitle, setMatTitle] = useState("");
   const [matSubject, setMatSubject] = useState<CourseTopic["subject"]>("Fractions");
   const [matBody, setMatBody] = useState("");
+  const [matFile, setMatFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [storageMode, setStorageMode] = useState<string>("");
   const esRef = useRef<EventSource | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -94,41 +96,73 @@ export default function TeacherPage() {
 
   async function onUploadMaterial(e: React.FormEvent) {
     e.preventDefault();
-    if (matTitle.trim().length < 3 || matBody.trim().length < 20) {
-      showToast("Title needs 3+ chars and material needs 20+ chars.");
+    const hasFile = matFile && matFile.size > 0;
+    if (matTitle.trim().length < 3 || (!hasFile && matBody.trim().length < 20)) {
+      showToast("Title needs 3+ chars; paste material (20+ chars) or attach a PDF.");
       return;
     }
     setUploading(true);
     try {
-      const res = await fetch("/api/course-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: matTitle, subject: matSubject, material: matBody }),
-      });
-      if (!res.ok) throw new Error("upload failed");
-      const d = (await res.json()) as { topics: CourseTopic[] };
-      setTopics(d.topics);
+      let res: Response;
+      if (hasFile) {
+        // PDF path: multipart upload → server extracts text, chunks, embeds.
+        const fd = new FormData();
+        fd.set("title", matTitle);
+        fd.set("subject", matSubject);
+        fd.set("file", matFile as File);
+        res = await fetch("/api/materials", { method: "POST", body: fd });
+      } else {
+        res = await fetch("/api/materials", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: matTitle, subject: matSubject, material: matBody }),
+        });
+      }
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error ?? "upload failed");
+      }
+      const d = (await res.json()) as {
+        mode: string;
+        material: { title: string; chunks: number };
+      };
+      setStorageMode(d.mode);
       setMatTitle("");
       setMatBody("");
+      setMatFile(null);
+      const fileInput = document.getElementById("material-pdf") as HTMLInputElement | null;
+      if (fileInput) fileInput.value = "";
+      await refreshMaterials();
       showToast(
-        `Portion uploaded — student quizzes now generate from "${matTitle}".`,
+        `"${d.material.title}" uploaded (${d.material.chunks} chunks embedded${d.mode === "supabase" ? " · stored in Supabase pgvector" : " · demo store"}).`,
       );
-    } catch {
-      showToast("Upload failed — try again.");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Upload failed — try again.");
     } finally {
       setUploading(false);
     }
   }
 
-  async function onDeleteMaterial(id: string) {
+  async function refreshMaterials() {
     try {
-      const res = await fetch(`/api/course-content?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      const d = (await res.json()) as { topics: CourseTopic[] };
-      setTopics(d.topics);
-      showToast("Portion removed.");
+      const res = await fetch("/api/materials", { cache: "no-store" });
+      if (!res.ok) return;
+      const d = (await res.json()) as {
+        mode: string;
+        materials: { id: string; title: string; subject: string; char_count: number }[];
+      };
+      setStorageMode(d.mode);
+      setTopics(
+        d.materials.map((m) => ({
+          id: m.id,
+          title: m.title,
+          subject: m.subject as CourseTopic["subject"],
+          material: " ".repeat(Math.min(m.char_count, 20000)),
+          createdAt: 0,
+        })),
+      );
     } catch {
-      showToast("Delete failed.");
+      // keep previous list
     }
   }
 
@@ -172,10 +206,21 @@ export default function TeacherPage() {
       .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : "Load failed."));
 
     // Load uploaded portions
-    fetch("/api/course-content", { cache: "no-store" })
+    fetch("/api/materials", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (alive && d?.topics) setTopics(d.topics as CourseTopic[]);
+        if (alive && d?.materials) {
+          setStorageMode(d.mode ?? "");
+          setTopics(
+            (d.materials as { id: string; title: string; subject: string; char_count: number }[]).map((m) => ({
+              id: m.id,
+              title: m.title,
+              subject: m.subject as CourseTopic["subject"],
+              material: " ".repeat(Math.min(m.char_count, 20000)),
+              createdAt: 0,
+            })),
+          );
+        }
       })
       .catch(() => {});
 
@@ -833,8 +878,9 @@ export default function TeacherPage() {
                     </span>
                   </div>
                   <p className="-mt-2 font-body-sm text-body-sm text-on-surface-variant">
-                    Upload class notes and portions — student quizzes, arcade packs and grading are generated from
-                    this material.
+                    Upload PDFs or notes — they&apos;re chunked, embedded (Gemini) and stored
+                    {storageMode === "supabase" ? " in Supabase pgvector" : " (demo store)"} for retrieval-grounded
+                    quizzes.
                   </p>
 
                   <form onSubmit={onUploadMaterial} className="flex flex-col gap-2">
@@ -862,12 +908,25 @@ export default function TeacherPage() {
                       value={matBody}
                       onChange={(e) => setMatBody(e.target.value)}
                       placeholder={
-                        "Paste the portion / notes here…\ne.g. To add 1/2 + 1/3, find the common denominator: 3/6 + 2/6 = 5/6. Never add denominators straight."
+                        "Paste the portion / notes here (or attach a PDF below)…\ne.g. To add 1/2 + 1/3, find the common denominator: 3/6 + 2/6 = 5/6."
                       }
-                      required
                       rows={4}
                       className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest px-3 py-2 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-container/40"
                     />
+                    <label
+                      htmlFor="material-pdf"
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-outline-variant/60 bg-surface-container-low/50 px-3 py-2.5 font-body-sm text-body-sm text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-tertiary">picture_as_pdf</span>
+                      <span>{matFile ? matFile.name : "Attach a PDF (lecture notes, workbook chapters…)"}</span>
+                      <input
+                        id="material-pdf"
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(e) => setMatFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
                     <button
                       type="submit"
                       disabled={uploading}
@@ -878,7 +937,7 @@ export default function TeacherPage() {
                       >
                         {uploading ? "progress_activity" : "cloud_upload"}
                       </span>
-                      <span>{uploading ? "Uploading…" : "Upload Portion — powers student quizzes"}</span>
+                      <span>{uploading ? "Extracting · chunking · embedding…" : "Upload & embed — powers student quizzes"}</span>
                     </button>
                   </form>
 
@@ -894,16 +953,15 @@ export default function TeacherPage() {
                               {t.title}
                             </p>
                             <p className="truncate font-label-sm text-label-sm text-outline">
-                              {t.subject} · {t.material.length} chars
+                              {t.subject} · {t.material.trim().length} chars · embedded
                             </p>
                           </div>
-                          <button
-                            onClick={() => onDeleteMaterial(t.id)}
-                            aria-label={`Delete ${t.title}`}
-                            className="shrink-0 rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-error-container hover:text-error"
+                          <span
+                            className="shrink-0 rounded-lg p-1.5 text-outline"
+                            title="Managed via Supabase — deletions coming to the dashboard"
                           >
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
+                            <span className="material-symbols-outlined text-[16px]">database</span>
+                          </span>
                         </div>
                       ))}
                     </div>

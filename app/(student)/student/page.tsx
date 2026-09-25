@@ -51,7 +51,7 @@ export default function StudentPortalPage() {
 
   const pack = useMemo(() => getPack(currentQuiz.lessonId), [currentQuiz.lessonId]);
 
-  // ---- Teacher-uploaded course material ----
+  // ---- Teacher-uploaded course material (RAG) ----
   interface MaterialTopic {
     id: string;
     title: string;
@@ -63,34 +63,53 @@ export default function StudentPortalPage() {
     q: string;
     options: [string, string, string, string];
     answer: number;
+    citation: string;
   } | null>(null);
+  const [quizSources, setQuizSources] = useState<string[]>([]);
   const [expected, setExpected] = useState<string | undefined>(undefined);
 
   // Sync stored student on mount + load teacher portions
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudent(loadStudent(STUDENT_ID));
-    fetch("/api/course-content", { cache: "no-store" })
+    fetch("/api/materials", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.topics) setTopics(d.topics as MaterialTopic[]);
+        if (d?.materials) {
+          setTopics(
+            (d.materials as { id: string; title: string; subject: string; char_count: number }[]).map((m) => ({
+              id: m.id,
+              title: m.title,
+              subject: m.subject,
+              material: " ".repeat(Math.min(m.char_count, 20000)),
+            })),
+          );
+        }
       })
       .catch(() => {
         // material panel best-effort
       });
   }, []);
 
-  // Refresh portions when the quest modal opens (teacher may have uploaded new ones)
+  // Fetch a retrieval-grounded quiz whenever the quest modal opens
   useEffect(() => {
     if (!showQuestModal) return;
-    fetch("/api/quiz-from-material", { cache: "no-store" })
+    fetch("/api/quiz/rag?count=3", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.pack?.questions?.length) {
-          setMaterialQuiz(d.pack.questions[0]);
-          setExpected(d.expected?.[0]);
+        if (d?.questions?.length) {
+          const q = d.questions[0];
+          setMaterialQuiz({
+            q: q.q,
+            options: q.options,
+            answer: q.answer,
+            citation: q.citation ?? "class material",
+          });
+          setQuizSources(d.sources ?? []);
+          setExpected(q.expectedReasoning);
         } else {
           setMaterialQuiz(null);
+          setQuizSources([]);
           setExpected(undefined);
         }
       })
@@ -486,8 +505,8 @@ export default function StudentPortalPage() {
                   Practice these portions
                 </button>
               </div>
-              <p className="text-caption font-caption text-on-surface-variant mt-2 line-clamp-2">
-                {topics[0].material}
+              <p className="text-caption font-caption text-on-surface-variant mt-2">
+                Quizzes, grading and arcade packs are generated from these portions — {topics.length} uploaded.
               </p>
             </section>
           )}
@@ -1222,12 +1241,24 @@ export default function StudentPortalPage() {
                       <div className="min-w-0">
                         <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-tertiary-fixed">
                           <span className="material-symbols-outlined text-[12px]">history_edu</span>
-                          From teacher&apos;s uploaded portion
+                          Grounded in: {materialQuiz.citation}
                         </span>
                         <h3 className="font-bold text-base text-on-surface mt-1">{materialQuiz.q}</h3>
-                        <p className="text-xs text-on-surface-variant mt-1">
-                          {materialQuiz.options.map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`).join("   ·   ")}
-                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
+                          {materialQuiz.options.map((o, i) => (
+                            <span
+                              key={i}
+                              className="rounded-lg bg-surface-container-lowest border border-outline-variant/30 px-2.5 py-1.5 text-xs text-on-surface"
+                            >
+                              <strong className="text-primary">{String.fromCharCode(65 + i)}.</strong> {o}
+                            </span>
+                          ))}
+                        </div>
+                        {quizSources.length > 0 && (
+                          <p className="text-[10px] text-outline mt-2">
+                            Sources: {quizSources.join(" · ")}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <h3 className="font-bold text-base text-on-surface">{currentQuiz.prompt}</h3>
