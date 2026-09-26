@@ -25,7 +25,7 @@ export default function StudentPortalPage() {
   const [popId, setPopId] = useState<string | null>(null);
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [inGame, setInGame] = useState(false);
-  const [activeTab, setActiveTab] = useState<"journey" | "quiz" | "goals" | "improvement">("journey");
+  const [activeTab, setActiveTab] = useState<"journey" | "quiz" | "goals" | "improvement" | "settings">("journey");
 
   // Pomodoro Timer State
   const [initialSeconds, setInitialSeconds] = useState(25 * 60);
@@ -388,6 +388,17 @@ export default function StudentPortalPage() {
               <span className="material-symbols-outlined text-body-lg" data-icon="help">help</span>
               <span>Support</span>
             </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-label-md text-label-md transition-colors duration-150 text-left ${
+                activeTab === "settings"
+                  ? "bg-primary-container text-on-primary-container shadow-sm font-bold"
+                  : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-body-lg" data-icon="settings">settings</span>
+              <span>Settings</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -447,7 +458,8 @@ export default function StudentPortalPage() {
         {/* ==================== DASHBOARD CANVAS ==================== */}
         <main className="p-8 space-y-6 max-w-[1440px] mx-auto w-full">
           {/* Welcoming Greeting Banner */}
-          <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-surface-container-low via-surface-container to-secondary-fixed/40 border border-outline-variant/30 pastel-card-shadow">
+          {(activeTab === "journey") && (
+<section className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-surface-container-low via-surface-container to-secondary-fixed/40 border border-outline-variant/30 pastel-card-shadow">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-on-surface tracking-tight">Good afternoon, Alex! ✨</h1>
@@ -477,10 +489,11 @@ export default function StudentPortalPage() {
               </div>
             </div>
           </section>
+)}
 
           {/* TEACHER'S UPLOADED PORTIONS */}
-          {topics.length > 0 && (
-            <section className="p-5 rounded-2xl bg-gradient-to-r from-tertiary-fixed/60 via-surface-container-low to-surface-container-lowest border border-outline-variant/30 pastel-card-shadow">
+          {topics.length > 0 && activeTab === "journey" && (
+<section className="p-5 rounded-2xl bg-gradient-to-r from-tertiary-fixed/60 via-surface-container-low to-surface-container-lowest border border-outline-variant/30 pastel-card-shadow">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-9 h-9 rounded-xl bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0">
@@ -512,7 +525,8 @@ export default function StudentPortalPage() {
           )}
 
           {/* 1. TOP METRICS / QUICK STATS (BENTO ROW) */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {(activeTab === "journey") && (
+<section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Metric 1: Study Hours this week */}
             <div className="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 pastel-card-shadow card-hover-fx relative overflow-hidden">
               <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-primary-fixed/20 pointer-events-none"></div>
@@ -589,9 +603,11 @@ export default function StudentPortalPage() {
               </div>
             </div>
           </section>
+)}
 
                     {/* ==================== SECTION: FOCUS & TOOLS ==================== */}
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {(activeTab === "journey") && (
+<section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="col-span-full flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-lg" data-icon="bolt">bolt</span>
                 <h2 className="text-caption font-caption text-outline uppercase tracking-widest font-bold">Focus & Tools</h2>
@@ -819,9 +835,11 @@ export default function StudentPortalPage() {
               </p>
             </div>
           </section>
+)}
 
           {/* ==================== SECTION: IMPROVEMENT & INSIGHTS ==================== */}
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {(activeTab === "improvement") && (
+<section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="col-span-full flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-lg" data-icon="insights">insights</span>
                 <h2 className="text-caption font-caption text-outline uppercase tracking-widest font-bold">Improvement & Insights</h2>
@@ -1042,9 +1060,11 @@ export default function StudentPortalPage() {
               </div>
             </div>
           </section>
+)}
 
           {/* ==================== SECTION: GOALS & MILESTONES ==================== */}
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-8">
+          {(activeTab === "goals") && (
+<section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-8">
               <div className="col-span-full flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-lg" data-icon="flag">flag</span>
                 <h2 className="text-caption font-caption text-outline uppercase tracking-widest font-bold">Goals & Milestones</h2>
@@ -1183,6 +1203,34 @@ export default function StudentPortalPage() {
               </p>
             </div>
           </section>
+)}
+          {activeTab === "quiz" && !showQuestModal && (
+            <section className="p-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 pastel-card-shadow flex flex-col items-center text-center gap-3">
+              <span className="w-14 h-14 rounded-2xl bg-secondary-fixed text-secondary flex items-center justify-center">
+                <span className="material-symbols-outlined text-[32px]" data-icon="quiz">quiz</span>
+              </span>
+              <h2 className="text-title-md font-title-md font-bold text-on-surface">Quick Quiz</h2>
+              <p className="text-body-md font-body-md text-on-surface-variant max-w-md">
+                Portion-grounded quizzes launch from your quest map. Open the map to start a check generated
+                from your teacher&apos;s latest material.
+              </p>
+              <button
+                onClick={() => setShowQuestModal(true)}
+                className="mt-1 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container font-label-md text-label-md font-bold shadow-sm hover:opacity-95 active:scale-95 transition-all"
+              >
+                Open Quest Map
+              </button>
+            </section>
+          )}
+
+          {activeTab === "settings" && (
+            <section className="p-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 pastel-card-shadow flex flex-col gap-3">
+              <h2 className="text-title-md font-title-md font-bold text-on-surface">Settings</h2>
+              <p className="text-body-md font-body-md text-on-surface-variant">
+                Sound themes, avatar preferences, and notification settings will be configurable here.
+              </p>
+            </section>
+          )}
         </main>
       </div>
 

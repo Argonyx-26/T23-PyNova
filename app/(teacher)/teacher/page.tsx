@@ -1,5 +1,14 @@
 "use client";
 
+type TeacherView =
+  | "overview"
+  | "heatmap"
+  | "students"
+  | "topics"
+  | "quests"
+  | "analytics"
+  | "settings";
+
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { ClassState, StudentStats } from "@/lib/class-store";
@@ -70,6 +79,7 @@ export default function TeacherPage() {
   const [matFile, setMatFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [storageMode, setStorageMode] = useState<string>("");
+  const [view, setView] = useState<TeacherView>("heatmap");
   const esRef = useRef<EventSource | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -298,13 +308,13 @@ export default function TeacherPage() {
     });
 
   const lessons = bank.lessons as { id: string; title: string; content: string }[];
-  const navItems = [
-    { icon: "dashboard", label: "Overview" },
-    { icon: "grid_view", label: "Class Heatmap", active: true },
-    { icon: "group", label: "Students & Diagnosis" },
-    { icon: "psychology", label: "Topics & Misconceptions" },
-    { icon: "military_tech", label: "Gamified Quests" },
-    { icon: "query_stats", label: "Analytics & Reports" },
+  const navItems: { icon: string; label: string; id: TeacherView }[] = [
+    { icon: "dashboard", label: "Overview", id: "overview" },
+    { icon: "grid_view", label: "Class Heatmap", id: "heatmap" },
+    { icon: "group", label: "Students & Diagnosis", id: "students" },
+    { icon: "psychology", label: "Topics & Misconceptions", id: "topics" },
+    { icon: "military_tech", label: "Gamified Quests", id: "quests" },
+    { icon: "query_stats", label: "Analytics & Reports", id: "analytics" },
   ];
 
   const featuredLesson = topMisconceptions[0]?.lessonId ?? redFlagLessons[0]?.[0] ?? "frac-1";
@@ -386,34 +396,47 @@ export default function TeacherPage() {
           </div>
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => (
-              <a
-                key={item.label}
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                aria-current={item.active ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-lg px-space-sm py-2 font-label-md text-label-md transition-all ${
-                  item.active
+              <button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                aria-current={view === item.id ? "page" : undefined}
+                className={`flex items-center gap-3 rounded-lg px-space-sm py-2 text-left font-label-md text-label-md transition-all ${
+                  view === item.id
                     ? "bg-primary-container font-semibold text-on-primary-container shadow-sm"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 }`}
               >
-                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={view === item.id ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {item.icon}
+                </span>
                 <span>{item.label}</span>
-              </a>
+              </button>
             ))}
           </nav>
         </div>
         <div className="flex flex-col gap-space-xs px-space-sm">
           <div className="mx-space-xs mb-space-xs h-px bg-outline-variant/30"></div>
           <nav className="flex flex-col gap-1">
-            <a
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              className="flex items-center gap-3 rounded-lg px-space-sm py-2 font-label-md text-label-md text-on-surface-variant transition-all hover:bg-surface-container hover:text-on-surface"
+            <button
+              onClick={() => setView("settings")}
+              aria-current={view === "settings" ? "page" : undefined}
+              className={`flex items-center gap-3 rounded-lg px-space-sm py-2 text-left font-label-md text-label-md transition-all ${
+                view === "settings"
+                  ? "bg-primary-container font-semibold text-on-primary-container shadow-sm"
+                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+              }`}
             >
-              <span className="material-symbols-outlined text-[20px]">tune</span>
+              <span
+                className="material-symbols-outlined text-[20px]"
+                style={view === "settings" ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              >
+                tune
+              </span>
               <span>Portal Settings</span>
-            </a>
+            </button>
           </nav>
         </div>
       </aside>
@@ -428,7 +451,8 @@ export default function TeacherPage() {
           )}
           <div className="flex w-full flex-col gap-space-lg">
             {/* TOP HEADER & CONTROLS BAR */}
-            <div className="flex flex-col justify-between gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm xl:flex-row xl:items-center">
+            {(view === "overview" || view === "heatmap" || view === "analytics") && (
+<div className="flex flex-col justify-between gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm xl:flex-row xl:items-center">
               <div className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-space-sm">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-fixed px-2.5 py-0.5 font-label-sm text-label-sm uppercase tracking-wider text-on-primary-fixed">
@@ -496,9 +520,11 @@ export default function TeacherPage() {
                 </button>
               </div>
             </div>
+)}
 
             {/* 4-COLUMN KPI CARDS */}
-            <div className="grid grid-cols-1 gap-space-md md:grid-cols-2 xl:grid-cols-4">
+            {(view === "overview") && (
+<div className="grid grid-cols-1 gap-space-md md:grid-cols-2 xl:grid-cols-4">
               {/* KPI 1 */}
               <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container-lowest p-space-md shadow-sm transition-shadow hover:shadow-md">
                 <div className="flex items-start justify-between">
@@ -624,11 +650,13 @@ export default function TeacherPage() {
                 </div>
               </div>
             </div>
+)}
 
             {/* MAIN 2-COLUMN BALANCED DESKTOP GRID */}
             <div className="grid grid-cols-1 items-start gap-space-lg xl:grid-cols-12">
               {/* LEFT COLUMN: CLASS HEATMAP TABLE */}
-              <div className="flex flex-col gap-space-md xl:col-span-7">
+              {(view === "heatmap" || view === "students") && (
+<div className="flex flex-col gap-space-md xl:col-span-7">
                 <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   {/* Matrix Header & Legend */}
                   <div className="flex flex-col justify-between gap-space-sm pb-space-sm sm:flex-row sm:items-center">
@@ -861,6 +889,7 @@ export default function TeacherPage() {
                   </div>
                 </div>
               </div>
+)}
 
               {/* RIGHT COLUMN: AI REASONING DIAGNOSIS & INTERVENTION HUB */}
               <div className="flex flex-col gap-space-md xl:col-span-5">
@@ -968,7 +997,8 @@ export default function TeacherPage() {
                   )}
                 </div>
                 {/* PANEL A: COGNITIVE DIAGNOSIS CARDS */}
-                <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
+                {(view === "topics") && (
+<div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[22px] text-secondary">psychology_alt</span>
@@ -1050,9 +1080,11 @@ export default function TeacherPage() {
                     </div>
                   ))}
                 </div>
+)}
 
                 {/* PANEL B: GAMIFIED REMEDIATION & INTERVENTION ACTION DECK */}
-                <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
+                {(view === "quests") && (
+<div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[22px] text-primary">rocket_launch</span>
@@ -1182,6 +1214,7 @@ export default function TeacherPage() {
                     </div>
                   )}
                 </div>
+)}
 
                 {/* Live feed */}
                 {state && state.recent.length > 0 && (
@@ -1222,6 +1255,38 @@ export default function TeacherPage() {
                 )}
               </div>
             </div>
+
+            {view === "analytics" && (
+              <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary">query_stats</span>
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface">Analytics &amp; Reports</h2>
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Data syncs automatically as students complete quests. Longitudinal mastery trends, cohort
+                  comparisons, and exportable diagnostic reports will populate here.
+                </p>
+                <button
+                  onClick={exportCsv}
+                  className="flex w-fit items-center gap-1.5 rounded-lg bg-primary-container px-3 py-2 font-label-md text-label-md text-on-primary shadow-sm transition-all hover:opacity-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  <span>Export Diagnostic Report (CSV)</span>
+                </button>
+              </div>
+            )}
+
+            {view === "settings" && (
+              <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary">tune</span>
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface">Portal Settings</h2>
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Class selection, diagnostic sensitivity, and integration preferences will be configurable here.
+                </p>
+              </div>
+            )}
           </div>
         </main>
       </div>

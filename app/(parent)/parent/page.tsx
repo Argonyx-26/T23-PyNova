@@ -10,6 +10,8 @@ import type { ClassState } from "@/lib/class-store";
 
 const STUDENT_ID = "demo-student";
 
+type ParentView = "digest" | "reports" | "approvals" | "settings";
+
 function masteryClass(m: number): string {
   if (m >= 0.8) return "bg-emerald-100 text-emerald-800";
   if (m >= 0.5) return "bg-amber-100 text-amber-800";
@@ -19,6 +21,7 @@ function masteryClass(m: number): string {
 export default function ParentPage() {
   const [student, setStudent] = useState<StudentState | null>(null);
   const [klass, setKlass] = useState<ClassState | null>(null);
+  const [view, setView] = useState<ParentView>("digest");
 
   // Same hydration pattern as student view: server has no
   // localStorage, so sync persisted state after mount.
@@ -59,6 +62,13 @@ export default function ParentPage() {
     ? lessons.find((l) => student.unlockedLessonIds.includes(l.id) && (student.mastery[l.id] ?? 0) < 0.8)
     : undefined;
 
+  const tabs: { id: ParentView; icon: string; label: string }[] = [
+    { id: "digest", icon: "summary", label: "Summary Digest" },
+    { id: "reports", icon: "fact_check", label: "Progress / Reports" },
+    { id: "approvals", icon: "approval", label: "Quest Approvals" },
+    { id: "settings", icon: "tune", label: "Settings" },
+  ];
+
   return (
     <div className="min-h-screen bg-surface font-body-md text-on-surface antialiased">
       {/* ==================== TOP HEADER ==================== */}
@@ -90,83 +100,113 @@ export default function ParentPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-space-lg py-space-lg print:max-w-none">
+        {/* ==================== SECTION TABS ==================== */}
+        <nav className="mb-space-lg flex flex-wrap items-center gap-2 print:hidden">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setView(t.id)}
+              aria-current={view === t.id ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 font-label-md text-label-md shadow-sm transition-all ${
+                view === t.id
+                  ? "bg-primary font-semibold text-on-primary"
+                  : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[20px]"
+                style={view === t.id ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              >
+                {t.icon}
+              </span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </nav>
+
         {!student ? (
           <div className="flex flex-col gap-2 rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
             <p className="font-body-lg text-body-lg text-on-surface-variant">Loading report…</p>
           </div>
         ) : (
-          <div className="flex w-full flex-col gap-space-lg">
-            {/* Report header */}
-            <div className="flex flex-col justify-between gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm md:flex-row md:items-center">
-              <div className="flex flex-col gap-1">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-fixed px-2.5 py-0.5 font-label-sm text-label-sm uppercase tracking-wider text-on-primary-fixed">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
-                  Verified Weekly Report
-                </span>
-                <h1 className="font-headline-lg text-headline-lg tracking-tight text-on-surface">
-                  Alex Chen — Mastery &amp; Progress
-                </h1>
-                <p className="max-w-2xl font-body-md text-body-md text-on-surface-variant">
-                  AI-verified mastery evidence from the adventure quest map. Every point below was earned by passing
-                  a reasoning check — not by watching videos.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 rounded-xl bg-surface-container-low px-space-md py-2.5">
-                <span className="material-symbols-outlined text-[20px] text-tertiary">local_fire_department</span>
-                <div>
-                  <p className="font-label-md text-label-md font-bold text-on-surface">{student.streak}-day streak</p>
-                  <p className="font-label-sm text-label-sm text-on-surface-variant">{student.xp} XP earned</p>
+          <>
+            {/* ==================== SUMMARY DIGEST VIEW ==================== */}
+            {view === "digest" && (
+              <>
+                {/* Report header */}
+                <div className="flex flex-col justify-between gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm md:flex-row md:items-center">
+                  <div className="flex flex-col gap-1">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-fixed px-2.5 py-0.5 font-label-sm text-label-sm uppercase tracking-wider text-on-primary-fixed">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                      Verified Weekly Report
+                    </span>
+                    <h1 className="font-headline-lg text-headline-lg tracking-tight text-on-surface">
+                      Alex Chen — Mastery &amp; Progress
+                    </h1>
+                    <p className="max-w-2xl font-body-md text-body-md text-on-surface-variant">
+                      AI-verified mastery evidence from the adventure quest map. Every point below was earned by passing
+                      a reasoning check — not by watching videos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-xl bg-surface-container-low px-space-md py-2.5">
+                    <span className="material-symbols-outlined text-[20px] text-tertiary">local_fire_department</span>
+                    <div>
+                      <p className="font-label-md text-label-md font-bold text-on-surface">{student.streak}-day streak</p>
+                      <p className="font-label-sm text-label-sm text-on-surface-variant">{student.xp} XP earned</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* 4 KPI cards */}
-            <div className="grid grid-cols-2 gap-space-md xl:grid-cols-4">
-              <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
-                <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Average Mastery</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-metric-display text-metric-display text-on-surface">{avg}%</span>
-                  <span className="font-label-md text-label-md font-bold text-emerald-600">verified</span>
+                {/* 4 KPI cards */}
+                <div className="mt-space-lg grid grid-cols-2 gap-space-md xl:grid-cols-4">
+                  <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Average Mastery</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-metric-display text-metric-display text-on-surface">{avg}%</span>
+                      <span className="font-label-md text-label-md font-bold text-emerald-600">verified</span>
+                    </div>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary-container to-secondary-container"
+                        style={{ width: `${avg}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Nodes Mastered</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-metric-display text-metric-display text-on-surface">
+                        {mastered}
+                        <span className="text-on-surface-variant">/{lessons.length}</span>
+                      </span>
+                    </div>
+                    <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">
+                      quest map completion
+                    </p>
+                  </div>
+                  <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Learning Streak</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-metric-display text-metric-display text-on-surface">{student.streak}🔥</span>
+                    </div>
+                    <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">consecutive active days</p>
+                  </div>
+                  <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Experience Points</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-metric-display text-metric-display text-on-surface">{student.xp}</span>
+                      <span className="font-label-md text-label-md font-bold text-secondary">XP</span>
+                    </div>
+                    <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">lifetime earned</p>
+                  </div>
                 </div>
-                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary-container to-secondary-container"
-                    style={{ width: `${avg}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
-                <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Nodes Mastered</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-metric-display text-metric-display text-on-surface">
-                    {mastered}
-                    <span className="text-on-surface-variant">/{lessons.length}</span>
-                  </span>
-                </div>
-                <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">
-                  quest map completion
-                </p>
-              </div>
-              <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
-                <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Learning Streak</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-metric-display text-metric-display text-on-surface">{student.streak}🔥</span>
-                </div>
-                <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">consecutive active days</p>
-              </div>
-              <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
-                <p className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Experience Points</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-metric-display text-metric-display text-on-surface">{student.xp}</span>
-                  <span className="font-label-md text-label-md font-bold text-secondary">XP</span>
-                </div>
-                <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">lifetime earned</p>
-              </div>
-            </div>
+              </>
+            )}
 
-            <div className="grid grid-cols-1 gap-space-lg">
-              {/* Mastery breakdown */}
-              <div className="flex flex-col gap-space-md">
+            {/* ==================== PROGRESS / REPORTS VIEW ==================== */}
+            {view === "reports" && (
+              <div className="flex flex-col gap-space-lg">
+                {/* Mastery breakdown */}
                 <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   <div className="mb-space-md flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -263,8 +303,35 @@ export default function ParentPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            )}
+
+            {/* ==================== QUEST APPROVALS VIEW ==================== */}
+            {view === "approvals" && (
+              <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary">approval</span>
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface">Quest Approvals</h2>
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Quests unlocked by the teacher will appear here for parent sign-off. Nothing is awaiting approval
+                  right now — check back after your child completes their next diagnostic check.
+                </p>
+              </div>
+            )}
+
+            {/* ==================== SETTINGS VIEW ==================== */}
+            {view === "settings" && (
+              <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary">tune</span>
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface">Settings</h2>
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Notification preferences, report frequency, and connected guardians will be configurable here.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
