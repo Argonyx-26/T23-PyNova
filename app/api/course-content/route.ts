@@ -33,6 +33,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (rateLimited(`coursedel:${clientIp(request)}`, 10, 60_000)) {
+    return Response.json({ error: "Too many requests. Slow down." }, { status: 429 });
+  }
   const url = new URL(request.url);
   const id = url.searchParams.get("id") ?? "";
   if (!/^[a-z0-9-]{3,64}$/i.test(id)) {

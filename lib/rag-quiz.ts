@@ -163,11 +163,16 @@ function safeParseQuiz(raw: string): { question: string; options: string[]; answ
       .filter(
         (q) =>
           typeof q.question === "string" &&
+          q.question.length > 0 &&
+          q.question.length <= 500 &&
           Array.isArray(q.options) &&
           q.options.length === 4 &&
+          q.options.every((o) => typeof o === "string" && o.length > 0 && o.length <= 300) &&
           typeof q.answer_index === "number" &&
+          Number.isInteger(q.answer_index) &&
           q.answer_index >= 0 &&
-          q.answer_index <= 3,
+          q.answer_index <= 3 &&
+          (typeof q.expected_reasoning !== "string" || q.expected_reasoning.length <= 600),
       )
       .map((q) => ({
         question: q.question as string,

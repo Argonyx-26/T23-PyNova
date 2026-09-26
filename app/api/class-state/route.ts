@@ -1,32 +1,15 @@
 import { getClassState, recordEvent, resetClassState } from "@/lib/class-store";
 import { classEventSchema } from "@/lib/schemas";
+import { clientIp, rateLimited } from "@/lib/rate-limit";
 
-// ---- Simple in-memory rate limiting (per IP) ----
+// ---- Rate limiting (per IP, shared limiter) ----
 // Protects the shared demo state from accidental or malicious flooding
 // during a live presentation. Not a substitute for real infra limits.
 const RATE_LIMIT = 30; // events
 const RATE_WINDOW_MS = 60_000;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
-function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  return (fwd ? fwd.split(",")[0] : null) ?? "local";
-}
-
-function rateLimited(req: Request): boolean {
-  const ip = clientIp(req);
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip);
-  if (!bucket || now > bucket.resetAt) {
-    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    // Opportunistic cleanup so the map cannot grow unbounded.
-    if (rateBuckets.size > 500) {
-      for (const [k, v] of rateBuckets) if (now > v.resetAt) rateBuckets.delete(k);
-    }
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > RATE_LIMIT;
+function rateLimitedEvent(req: Request): boolean {
+  return rateLimited(`classevent:${clientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS);
 }
 
 export async function GET(request: Request) {
@@ -79,7 +62,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (rateLimited(request)) {
+  if (rateLimitedEvent(request)) {
     return Response.json({ error: "Too many events. Slow down." }, { status: 429 });
   }
 
@@ -108,7 +91,12 @@ export async function POST(request: Request) {
   return Response.json(getClassState());
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  // Unauthenticated global wipe exists for the demo reset button —
+  // rate-limit it so one client can't flap shared state forever.
+  if (rateLimited(`classreset:${clientIp(request)}`, 10, 60_000)) {
+    return Response.json({ error: "Too many resets. Slow down." }, { status: 429 });
+  }
   resetClassState();
   return Response.json(getClassState());
 }

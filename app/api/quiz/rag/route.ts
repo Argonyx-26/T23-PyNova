@@ -19,7 +19,11 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const topic = (url.searchParams.get("topic") ?? "").slice(0, 300);
   const materialId = url.searchParams.get("materialId");
-  const count = Math.min(10, Math.max(1, Number(url.searchParams.get("count") ?? 5)));
+  if (materialId !== null && !/^[A-Za-z0-9-]{3,64}$/.test(materialId)) {
+    return Response.json({ error: "Invalid materialId." }, { status: 400 });
+  }
+  const rawCount = Number(url.searchParams.get("count") ?? 5);
+  const count = Number.isFinite(rawCount) ? Math.min(10, Math.max(1, Math.floor(rawCount))) : 5;
   const apiKey = process.env.GEMINI_API_KEY;
 
   const supabase = getSupabaseAdmin();

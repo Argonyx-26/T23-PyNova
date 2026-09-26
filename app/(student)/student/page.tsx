@@ -68,10 +68,18 @@ export default function StudentPortalPage() {
   const [quizSources, setQuizSources] = useState<string[]>([]);
   const [expected, setExpected] = useState<string | undefined>(undefined);
 
-  // Sync stored student on mount + load teacher portions
+  // Sync stored student on mount. Quest-modal data (portions, RAG quiz)
+  // loads lazily in the modal effect below — never on dashboard mount.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudent(loadStudent(STUDENT_ID));
+  }, []);
+
+  // Fetch retrieval-grounded quiz + teacher portions only while the
+  // quest modal is open. The close handler clears transient quiz state
+  // so stale questions never leak into the next session.
+  useEffect(() => {
+    if (!showQuestModal) return;
     fetch("/api/materials", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -89,11 +97,6 @@ export default function StudentPortalPage() {
       .catch(() => {
         // material panel best-effort
       });
-  }, []);
-
-  // Fetch a retrieval-grounded quiz whenever the quest modal opens
-  useEffect(() => {
-    if (!showQuestModal) return;
     fetch("/api/quiz/rag?count=3", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -1242,6 +1245,12 @@ export default function StudentPortalPage() {
               onClick={() => {
                 setShowQuestModal(false);
                 setInGame(false);
+                setFeedback(null);
+                setAnswer("");
+                setReasoning("");
+                setMaterialQuiz(null);
+                setQuizSources([]);
+                setExpected(undefined);
               }}
               className="absolute top-4 right-4 w-9 h-9 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant flex items-center justify-center text-sm font-bold transition-colors"
             >

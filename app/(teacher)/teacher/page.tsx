@@ -91,6 +91,12 @@ export default function TeacherPage() {
 
   const triggerIntervention = (msg: string) => showToast(msg);
 
+  // Tab switch unmounts the prior section; drop its transient selection.
+  const pickView = (v: TeacherView) => {
+    setPickedStudent(null);
+    setView(v);
+  };
+
   async function onReset() {
     setSeeding(true);
     try {
@@ -215,25 +221,6 @@ export default function TeacherPage() {
       .then((s) => alive && setState(s))
       .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : "Load failed."));
 
-    // Load uploaded portions
-    fetch("/api/materials", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (alive && d?.materials) {
-          setStorageMode(d.mode ?? "");
-          setTopics(
-            (d.materials as { id: string; title: string; subject: string; char_count: number }[]).map((m) => ({
-              id: m.id,
-              title: m.title,
-              subject: m.subject as CourseTopic["subject"],
-              material: " ".repeat(Math.min(m.char_count, 20000)),
-              createdAt: 0,
-            })),
-          );
-        }
-      })
-      .catch(() => {});
-
     const connect = () => {
       const es = new EventSource("/api/class-state?stream=sse");
       esRef.current = es;
@@ -262,8 +249,17 @@ export default function TeacherPage() {
       alive = false;
       esRef.current?.close();
       if (poll) clearInterval(poll);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
+
+  // Topics-scope fetch: portions list loads only when the Topics tab opens.
+  const topicsLoaded = useRef(false);
+  useEffect(() => {
+    if (view !== "topics" || topicsLoaded.current) return;
+    topicsLoaded.current = true;
+    refreshMaterials();
+  }, [view]);
 
   // ---- Derived live metrics ----
   const students = Object.entries(state?.students ?? {}).sort(
@@ -398,7 +394,7 @@ export default function TeacherPage() {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setView(item.id)}
+                onClick={() => pickView(item.id)}
                 aria-current={view === item.id ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-lg px-space-sm py-2 text-left font-label-md text-label-md transition-all ${
                   view === item.id
@@ -421,7 +417,7 @@ export default function TeacherPage() {
           <div className="mx-space-xs mb-space-xs h-px bg-outline-variant/30"></div>
           <nav className="flex flex-col gap-1">
             <button
-              onClick={() => setView("settings")}
+              onClick={() => pickView("settings")}
               aria-current={view === "settings" ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-space-sm py-2 text-left font-label-md text-label-md transition-all ${
                 view === "settings"
@@ -448,10 +444,44 @@ export default function TeacherPage() {
             <div className="mb-space-md rounded-lg bg-error-container px-4 py-3 font-label-md text-label-md text-on-error-container">
               {error}
             </div>
-          )}
+            )}
+
+            {/* SHARED WORLD SNAPSHOT — overview scope only */}
+            {(view === "overview") && (
+              <div className="flex flex-col items-center gap-space-md rounded-xl bg-surface-container-lowest p-space-md shadow-sm md:flex-row">
+                <div className="relative flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary-container to-secondary md:w-44">
+                  <span className="material-symbols-outlined text-[48px] text-white/90">castle</span>
+                  <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 via-transparent to-transparent p-2">
+                    <span className="font-label-sm text-label-sm font-bold text-white">Class Realm Map</span>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-title-md text-title-md text-on-surface">
+                      Shared World State: Student • Teacher • Parent
+                    </h3>
+                    <span className="font-label-sm text-label-sm font-bold text-primary">1 Shared Model</span>
+                  </div>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    When you deploy a remediation quest here, it instantly modifies the locked bridges in the
+                    student&apos;s adventure map, turning classroom weak spots into tangible quest gates.
+                  </p>
+                  <div className="mt-1 flex items-center gap-4 font-label-sm text-label-sm text-on-surface-variant">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px] text-primary">videogame_asset</span>
+                      {students.length} Active Explorers
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px] text-secondary">lock_open</span>
+                      {totals.correct} Gates Cleared
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           <div className="flex w-full flex-col gap-space-lg">
-            {/* TOP HEADER & CONTROLS BAR */}
-            {(view === "overview" || view === "heatmap" || view === "analytics") && (
+            {/* TOP HEADER & CONTROLS BAR — overview scope only */}
+            {(view === "overview") && (
 <div className="flex flex-col justify-between gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm xl:flex-row xl:items-center">
               <div className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-space-sm">
@@ -654,8 +684,8 @@ export default function TeacherPage() {
 
             {/* MAIN 2-COLUMN BALANCED DESKTOP GRID */}
             <div className="grid grid-cols-1 items-start gap-space-lg xl:grid-cols-12">
-              {/* LEFT COLUMN: CLASS HEATMAP TABLE */}
-              {(view === "heatmap" || view === "students") && (
+              {/* LEFT COLUMN: CLASS HEATMAP TABLE — heatmap scope only */}
+              {(view === "heatmap") && (
 <div className="flex flex-col gap-space-md xl:col-span-7">
                 <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   {/* Matrix Header & Legend */}
@@ -803,40 +833,6 @@ export default function TeacherPage() {
                     </table>
                   </div>
 
-                  {/* Per-student drill-down */}
-                  {pickedStudent &&
-                    (() => {
-                      const s = state?.students[pickedStudent];
-                      if (!s) return null;
-                      return (
-                        <div className="rounded-xl bg-surface-container-low p-space-md">
-                          <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-title-md text-title-md text-on-surface">
-                              {prettyName(pickedStudent)} — per-lesson breakdown
-                            </h4>
-                            <button
-                              onClick={() => setPickedStudent(null)}
-                              className="rounded-lg bg-surface-container-high px-2 py-1 font-label-sm text-label-sm text-on-surface hover:bg-surface-variant"
-                            >
-                              Close
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(s.lessons).map(([lid, ls]) => (
-                              <span
-                                key={lid}
-                                className={`rounded-lg px-2.5 py-1.5 font-label-sm text-label-sm shadow-xs ${
-                                  ls.wrong > 0 ? "bg-error-container text-on-error-container" : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {lessons.find((l) => l.id === lid)?.title ?? lid}: {ls.attempts - ls.wrong}✓ / {ls.wrong}✕
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
                   {/* Table Footer */}
                   <div className="-mx-space-lg -mb-space-lg flex flex-col justify-between gap-space-sm rounded-b-xl bg-surface-container-low/40 px-space-lg py-3 pt-space-sm sm:flex-row sm:items-center">
                     <p className="font-label-sm text-label-sm text-on-surface-variant">
@@ -847,7 +843,10 @@ export default function TeacherPage() {
                       <button
                         onClick={() => {
                           const firstRed = students.find(([, s]) => s.wrong >= 2 && s.lastMisconception);
-                          if (firstRed) setPickedStudent(firstRed[0]);
+                          if (firstRed) {
+                            setPickedStudent(firstRed[0]);
+                            setView("students");
+                          }
                         }}
                         className="rounded-lg bg-surface-container-high px-3 py-1.5 font-label-sm text-label-sm text-on-surface transition-colors hover:bg-surface-variant"
                       >
@@ -856,44 +855,14 @@ export default function TeacherPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Gamified Realm Map Snapshot */}
-                <div className="flex flex-col items-center gap-space-md rounded-xl bg-surface-container-lowest p-space-md shadow-sm md:flex-row">
-                  <div className="relative flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary-container to-secondary md:w-44">
-                    <span className="material-symbols-outlined text-[48px] text-white/90">castle</span>
-                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 via-transparent to-transparent p-2">
-                      <span className="font-label-sm text-label-sm font-bold text-white">Class Realm Map</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-title-md text-title-md text-on-surface">
-                        Shared World State: Student • Teacher • Parent
-                      </h3>
-                      <span className="font-label-sm text-label-sm font-bold text-primary">1 Shared Model</span>
-                    </div>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      When you deploy a remediation quest here, it instantly modifies the locked bridges in the
-                      student&apos;s adventure map, turning classroom weak spots into tangible quest gates.
-                    </p>
-                    <div className="mt-1 flex items-center gap-4 font-label-sm text-label-sm text-on-surface-variant">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px] text-primary">videogame_asset</span>
-                        {students.length} Active Explorers
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px] text-secondary">lock_open</span>
-                        {totals.correct} Gates Cleared
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
-)}
+            )}
 
-              {/* RIGHT COLUMN: AI REASONING DIAGNOSIS & INTERVENTION HUB */}
+              {/* RIGHT COLUMN: topics + quests scope only */}
+              {(view === "topics" || view === "quests") && (
               <div className="flex flex-col gap-space-md xl:col-span-5">
-                {/* PANEL 0: COURSE PORTIONS & MATERIAL UPLOAD */}
+                {/* PANEL 0: COURSE PORTIONS & MATERIAL UPLOAD — topics scope only */}
+                {(view === "topics") && (
                 <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -996,7 +965,8 @@ export default function TeacherPage() {
                     </div>
                   )}
                 </div>
-                {/* PANEL A: COGNITIVE DIAGNOSIS CARDS */}
+                )}
+                {/* PANEL A: COGNITIVE DIAGNOSIS CARDS — topics scope only */}
                 {(view === "topics") && (
 <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   <div className="flex items-center justify-between">
@@ -1216,7 +1186,115 @@ export default function TeacherPage() {
                 </div>
 )}
 
-                {/* Live feed */}
+                {/* Live feed — students scope only; rendered in Students section below */}
+              </div>
+              )}
+            </div>
+
+            {view === "students" && (
+              <div className="flex flex-col gap-space-md">
+                <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[22px] text-primary">group</span>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                      Students &amp; Diagnosis
+                    </h2>
+                  </div>
+                  <p className="-mt-2 font-body-sm text-body-sm text-on-surface-variant">
+                    Roster prioritized by misconception urgency — select a learner for the per-lesson breakdown.
+                  </p>
+                  {students.length === 0 && (
+                    <p className="rounded-xl bg-surface-container-low p-space-md font-body-sm text-body-sm text-on-surface-variant">
+                      No student activity yet. Submit from the Student portal or hit Reset demo.
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-1.5">
+                    {students.map(([id, s]) => {
+                      const urgentRow = s.wrong >= 2 && s.lastMisconception;
+                      const barrier = misconceptionTitle(s.lastMisconception);
+                      const open = pickedStudent === id;
+                      return (
+                        <div
+                          key={id}
+                          className={`rounded-xl border border-outline-variant/30 bg-surface-container-low ${
+                            urgentRow ? "border-error/40" : ""
+                          }`}
+                        >
+                          <button
+                            onClick={() => setPickedStudent(open ? null : id)}
+                            className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+                            aria-label={`${prettyName(id)}: ${s.wrong} wrong of ${s.attempts}`}
+                          >
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-label-md text-label-md font-bold shadow-xs ${
+                                urgentRow ? "bg-error text-on-error" : "bg-primary-fixed text-on-primary-fixed"
+                              }`}
+                            >
+                              {initials(id)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-label-md text-label-md text-on-surface">
+                                {prettyName(id)}
+                              </span>
+                              <span className={`block font-label-sm text-label-sm ${urgentRow ? "text-error" : "text-outline"}`}>
+                                {urgentRow ? "Stalled in Quest Gate" : `${s.attempts - s.wrong}✓ / ${s.wrong}✕`}
+                                {barrier ? ` · ${barrier}` : ""}
+                              </span>
+                            </span>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              {SUBJECTS.map((sub) => {
+                                const acc = subjectAccuracy(s, sub);
+                                return (
+                                  <span
+                                    key={sub}
+                                    title={`${sub}: ${acc === null ? "no data" : `${acc}%`}`}
+                                    className={`rounded px-1.5 py-0.5 font-label-sm text-label-sm font-bold shadow-xs ${accuracyClass(acc)}`}
+                                  >
+                                    {acc === null ? "—" : `${acc}`}
+                                  </span>
+                                );
+                              })}
+                              <span
+                                className={`rounded-lg px-2 py-1 font-label-sm text-label-sm font-bold ${
+                                  urgentRow
+                                    ? "bg-primary text-on-primary"
+                                    : "bg-surface-container-high text-on-surface"
+                                }`}
+                              >
+                                {urgentRow ? "Deploy Quest" : "Push Hint"}
+                              </span>
+                            </span>
+                          </button>
+                          {open && (
+                            <div className="flex flex-wrap gap-2 border-t border-outline-variant/30 px-3 py-2.5">
+                              {Object.entries(s.lessons).map(([lid, ls]) => (
+                                <span
+                                  key={lid}
+                                  className={`rounded-lg px-2.5 py-1.5 font-label-sm text-label-sm shadow-xs ${
+                                    ls.wrong > 0 ? "bg-error-container text-on-error-container" : "bg-emerald-100 text-emerald-800"
+                                  }`}
+                                >
+                                  {lessons.find((l) => l.id === lid)?.title ?? lid}: {ls.attempts - ls.wrong}✓ / {ls.wrong}✕
+                                </span>
+                              ))}
+                              <button
+                                onClick={() =>
+                                  triggerIntervention(
+                                    `Remedial drill broadcast to ${prettyName(id)} for "${barrier ?? "practice"}"!`,
+                                  )
+                                }
+                                className="rounded-lg bg-primary-container px-2.5 py-1.5 font-label-sm text-label-sm font-bold text-on-primary hover:opacity-95"
+                              >
+                                Broadcast remedial drill
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {state && state.recent.length > 0 && (
                   <div className="flex flex-col gap-2 rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
                     <div className="flex items-center justify-between">
@@ -1254,7 +1332,7 @@ export default function TeacherPage() {
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
             {view === "analytics" && (
               <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">

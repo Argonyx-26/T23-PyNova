@@ -85,11 +85,20 @@ function fallbackDiagnose(input: DiagnoseInput): DiagnoseResult {
 function isValidResult(v: unknown): v is DiagnoseResult {
   if (typeof v !== "object" || v === null) return false;
   const o = v as Record<string, unknown>;
+  // Model output is untrusted (LLM05): allowlist every id it returns so a
+  // hijacked completion can't poison shared state or unlock arbitrary nodes.
+  const lessons = bank.lessons as { id: string }[];
+  const lessonIds = new Set(lessons.map((l) => l.id));
+  const misconceptions = bank.misconceptions as { id: string }[];
+  const misconceptionIds = new Set(misconceptions.map((m) => m.id));
   return (
-    (typeof o.misconception_id === "string" || o.misconception_id === null) &&
+    (typeof o.misconception_id === "string" ? misconceptionIds.has(o.misconception_id) : o.misconception_id === null) &&
     typeof o.confidence === "number" &&
+    Number.isFinite(o.confidence) &&
     typeof o.feedback_20_words === "string" &&
+    (o.feedback_20_words as string).length <= 500 &&
     typeof o.next_lesson_id === "string" &&
+    lessonIds.has(o.next_lesson_id) &&
     typeof o.correct === "boolean"
   );
 }

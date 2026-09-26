@@ -6,7 +6,6 @@ import Link from "next/link";
 import { loadStudent } from "@/lib/store";
 import { getLessons } from "@/lib/world";
 import type { StudentState } from "@/lib/types";
-import type { ClassState } from "@/lib/class-store";
 
 const STUDENT_ID = "demo-student";
 
@@ -20,35 +19,14 @@ function masteryClass(m: number): string {
 
 export default function ParentPage() {
   const [student, setStudent] = useState<StudentState | null>(null);
-  const [klass, setKlass] = useState<ClassState | null>(null);
   const [view, setView] = useState<ParentView>("digest");
 
   // Same hydration pattern as student view: server has no
   // localStorage, so sync persisted state after mount.
+  // Student-scoped only: no class-wide polling lives here.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudent(loadStudent(STUDENT_ID));
-    let alive = true;
-    fetch("/api/class-state", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((s) => {
-        if (alive && s) setKlass(s as ClassState);
-      })
-      .catch(() => {
-        // class pulse best-effort; local report still renders
-      });
-    const timer = setInterval(() => {
-      fetch("/api/class-state", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((s) => {
-          if (alive && s) setKlass(s as ClassState);
-        })
-        .catch(() => {});
-    }, 5000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
   }, []);
 
   const lessons = getLessons();
@@ -262,46 +240,6 @@ export default function ParentPage() {
                     })}
                   </div>
                 </div>
-
-                {/* Live class pulse */}
-                {klass && Object.keys(klass.lessons).length > 0 && (
-                  <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[20px] text-tertiary">podium</span>
-                      <h2 className="font-headline-sm text-headline-sm text-on-surface">Live class pulse</h2>
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                      <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                        updates every 5s
-                      </span>
-                    </div>
-                    {(() => {
-                      const entries = Object.entries(klass.lessons);
-                      const total = entries.reduce((s, [, l]) => s + l.attempts, 0);
-                      const wrong = entries.reduce((s, [, l]) => s + l.wrong, 0);
-                      const top = entries
-                        .flatMap(([lid, l]) =>
-                          Object.entries(l.misconceptions).map(([mid, c]) => ({ lid, mid, c })),
-                        )
-                        .sort((a, b) => b.c - a.c)[0];
-                      return (
-                        <p className="font-body-md text-body-md text-on-surface-variant">
-                          Class attempts <strong className="text-on-surface">{total}</strong> · struggling{" "}
-                          <strong className="text-error">{wrong}</strong>
-                          {top && (
-                            <span>
-                              {" "}
-                              · top misconception{" "}
-                              <code className="rounded bg-error-container px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-on-error-container">
-                                {top.mid}
-                              </code>{" "}
-                              ({top.c}× in {top.lid})
-                            </span>
-                          )}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
             )}
 
