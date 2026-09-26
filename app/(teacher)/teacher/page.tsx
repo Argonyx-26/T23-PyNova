@@ -52,8 +52,7 @@ function accuracyClass(acc: number | null): string {
   return "bg-rose-100 text-rose-800";
 }
 
-function subjectAccuracy(s: StudentStats, subject: Subject): number | null {
-  let attempts = 0;
+function subjectAccuracy(s: StudentStats, subject: Subject): number | null {  let attempts = 0;
   let wrong = 0;
   for (const [lessonId, ls] of Object.entries(s.lessons)) {
     if (lessonSubject(lessonId) !== subject) continue;
@@ -63,6 +62,51 @@ function subjectAccuracy(s: StudentStats, subject: Subject): number | null {
   if (attempts === 0) return null;
   return Math.round(((attempts - wrong) / attempts) * 100);
 }
+
+// Temporary sample preview rows for layout testing — rendered only when
+// no live student activity exists. Scores map to legend bands:
+// green ≥80%, amber 60–79%, rose <60%.
+const MOCK_PREVIEW_ROWS: {
+  id: string;
+  name: string;
+  sub: string;
+  scores: [number, number, number];
+  barrier: string;
+  action: string;
+}[] = [
+  {
+    id: "mock-alex-chen",
+    name: "Alex Chen",
+    sub: "2/3 Realms Cleared",
+    scores: [92, 74, 45],
+    barrier: "Additive strategy on fractions",
+    action: "Assign Visual Quest",
+  },
+  {
+    id: "mock-sarah-jenkins",
+    name: "Sarah Jenkins",
+    sub: "Stalled in Quest Gate",
+    scores: [85, 68, 52],
+    barrier: "Variable isolation confusion",
+    action: "Trigger 1-on-1 Remediation",
+  },
+  {
+    id: "mock-marcus-vance",
+    name: "Marcus Vance",
+    sub: "1/3 Realms Cleared",
+    scores: [52, 45, 61],
+    barrier: "Distributes to first term only",
+    action: "Assign Visual Quest",
+  },
+  {
+    id: "mock-emma-watson",
+    name: "Emma Watson",
+    sub: "3/3 Realms Cleared",
+    scores: [88, 92, 95],
+    barrier: "No barrier detected",
+    action: "Push Extension Quest",
+  },
+];
 
 export default function TeacherPage() {
   const [state, setState] = useState<ClassState | null>(null);
@@ -686,7 +730,7 @@ export default function TeacherPage() {
             <div className="grid grid-cols-1 items-start gap-space-lg xl:grid-cols-12">
               {/* LEFT COLUMN: CLASS HEATMAP TABLE — heatmap scope only */}
               {(view === "heatmap") && (
-<div className="flex flex-col gap-space-md xl:col-span-7">
+<div className="flex flex-col gap-space-md xl:col-span-12">
                 <div className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
                   {/* Matrix Header & Legend */}
                   <div className="flex flex-col justify-between gap-space-sm pb-space-sm sm:flex-row sm:items-center">
@@ -718,31 +762,71 @@ export default function TeacherPage() {
                     </div>
                   </div>
 
-                  {/* Heatmap Table — responsive, no horizontal scrollbar */}
-                  <div className="w-full max-w-full">
-                    <table className="w-full table-fixed text-left font-body-sm text-body-sm">
+                  {/* Heatmap Table — horizontal scroll on narrow screens */}
+                  <div className="w-full max-w-full overflow-x-auto">
+                    <table className="w-full min-w-[680px] text-left font-body-sm text-body-sm">
                       <thead>
                         <tr className="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                          <th className="w-[24%] rounded-l-lg py-3 pl-3 pr-2 font-bold">Student Learner</th>
+                          <th className="min-w-[140px] rounded-l-lg px-3 py-3 pr-2 font-bold whitespace-nowrap">Student Learner</th>
                           {SUBJECTS.map((sub) => (
-                            <th key={sub} className="w-[10%] px-1 py-3 text-center font-bold">
+                            <th key={sub} className="min-w-[88px] px-3 py-3 text-center font-bold whitespace-nowrap">
                               {sub}
                             </th>
                           ))}
-                          <th className="w-[24%] px-2 py-3 font-bold">Diagnosed Barrier</th>
-                          <th className="w-[12%] rounded-r-lg px-2 py-3 text-right font-bold">Adaptive Action</th>
+                          <th className="min-w-[140px] px-3 py-3 font-bold">Diagnosed Barrier</th>
+                          <th className="min-w-[120px] rounded-r-lg px-3 py-3 text-right font-bold">Adaptive Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {students.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={6}
-                              className="py-8 text-center font-body-md text-body-md text-on-surface-variant"
-                            >
-                              No student activity yet. Submit from Student view or hit Reset demo.
-                            </td>
-                          </tr>
+                          <>
+                            <tr>
+                              <td
+                                colSpan={6}
+                                className="py-3 text-center font-label-sm text-label-sm text-outline"
+                              >
+                                Sample preview rows — submit from Student view or hit Reset demo for live data.
+                              </td>
+                            </tr>
+                            {MOCK_PREVIEW_ROWS.map((m) => (
+                              <tr key={m.id} className="transition-colors hover:bg-surface-container-low/60">
+                                <td className="py-2.5 pl-3 pr-2">
+                                  <span className="flex items-center gap-2.5">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-fixed font-label-md text-label-md font-bold text-on-primary-fixed shadow-xs">
+                                      {initials(m.id)}
+                                    </span>
+                                    <span>
+                                      <span className="block font-label-md text-label-md leading-tight text-on-surface">
+                                        {m.name}
+                                      </span>
+                                      <span className="block font-label-sm text-label-sm text-outline">
+                                        {m.sub}
+                                      </span>
+                                    </span>
+                                  </span>
+                                </td>
+                                {m.scores.map((score, i) => (
+                                  <td key={SUBJECTS[i]} className="min-w-[88px] px-3 py-2.5 text-center">
+                                    <span
+                                      className={`inline-block w-full max-w-16 rounded py-1 font-label-sm text-label-sm font-bold whitespace-nowrap shadow-xs ${accuracyClass(score)}`}
+                                    >
+                                      {score}%
+                                    </span>
+                                  </td>
+                                ))}
+                                <td className="px-4 py-2.5">
+                                  <span className="font-label-sm text-label-sm font-medium text-on-surface-variant">
+                                    {m.barrier}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <span className="rounded bg-surface-container-high px-2.5 py-1 font-label-sm text-label-sm text-on-surface">
+                                    {m.action}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </>
                         )}
                         {students.map(([id, s]) => {
                           const urgentRow = s.wrong >= 2 && s.lastMisconception;
@@ -789,9 +873,9 @@ export default function TeacherPage() {
                               {SUBJECTS.map((sub) => {
                                 const acc = subjectAccuracy(s, sub);
                                 return (
-                                  <td key={sub} className="px-2 py-2.5 text-center">
+                                  <td key={sub} className="min-w-[120px] px-4 py-2.5 text-center">
                                     <span
-                                      className={`inline-block w-full max-w-12 rounded py-1 font-label-sm text-label-sm font-bold shadow-xs ${accuracyClass(acc)}`}
+                                      className={`inline-block w-full max-w-16 rounded py-1 font-label-sm text-label-sm font-bold whitespace-nowrap shadow-xs ${accuracyClass(acc)}`}
                                     >
                                       {acc === null ? "—" : `${acc}%`}
                                     </span>

@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BubbleArcade from "@/components/bubble-arcade";
 import MapGrid from "@/components/map-grid";
 import { loadStudent, saveStudent, submitAnswer } from "@/lib/store";
+import { useAmbient, type AmbientMode } from "@/lib/ambient";
 import { applyResult, getMapGrid } from "@/lib/world";
 import { getPack } from "@/lib/game-bank";
 import type { DiagnoseResult } from "@/lib/types";
@@ -14,6 +16,7 @@ import bank from "@/lib/bank.json";
 const STUDENT_ID = "demo-student";
 
 export default function StudentPortalPage() {
+  const router = useRouter();
   // Student & Backend Quest state
   const [student, setStudent] = useState(() => loadStudent(STUDENT_ID));
   const [answer, setAnswer] = useState("");
@@ -32,8 +35,15 @@ export default function StudentPortalPage() {
   const [totalSeconds, setTotalSeconds] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [timerMode, setTimerMode] = useState<"pomodoro" | "short" | "deep">("pomodoro");
-  const [soundMode, setSoundMode] = useState("Lo-Fi");
-  const [isLoFiActive, setIsLoFiActive] = useState(true);
+  // Shared ambient controller: sidebar toggle and Focus Deck selector
+  // drive the same Web Audio engine, so state always stays in sync.
+  const ambient = useAmbient();
+  const SOUND_OPTIONS: { label: string; mode: AmbientMode }[] = [
+    { label: "Lo-Fi", mode: "lofi" },
+    { label: "Gentle Rain", mode: "rain" },
+    { label: "Library", mode: "library" },
+  ];
+  const lofiOn = ambient.playing && ambient.mode === "lofi";
 
   // Quest Navigation
   const nodes = useMemo(() => getMapGrid(student), [student]);
@@ -260,12 +270,9 @@ export default function StudentPortalPage() {
               Learn
             </p>
 
-            {/* 1. Journey (Quest Map) */}
+            {/* 1. Journey (Quest Map) — dedicated route */}
             <button
-              onClick={() => {
-                setActiveTab("journey");
-                setShowQuestModal(true);
-              }}
+              onClick={() => router.push("/student/journey")}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl font-label-md text-label-md transition-colors duration-150 text-left w-full ${
                 activeTab === "journey"
                   ? "bg-primary-container text-on-primary-container shadow-sm font-bold"
@@ -348,15 +355,22 @@ export default function StudentPortalPage() {
               </span>
             </button>
 
-            {/* 6. Lo-Fi Focus Sound Toggle (moved from top header) */}
+            {/* 6. Lo-Fi Focus Sound Toggle — drives the shared ambient engine */}
             <button
-              onClick={() => setIsLoFiActive(!isLoFiActive)}
+              onClick={() => ambient.toggle("lofi")}
               className="flex items-center gap-3 px-4 py-3 rounded-xl font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150 text-left w-full"
-              title="Focus Lo-Fi Player"
+              title={lofiOn ? "Pause Lo-Fi ambience" : "Play Lo-Fi ambience"}
+              aria-pressed={lofiOn}
             >
               <span className="material-symbols-outlined text-secondary" data-icon="headphones">headphones</span>
-              <span className="flex-1">Lo-Fi Chill</span>
-              <span className={`w-2 h-2 rounded-full ${isLoFiActive ? "bg-primary animate-pulse" : "bg-outline"}`}></span>
+              <span className="flex-1">Lo-Fi Chill {lofiOn ? "· Playing" : ""}</span>
+              {lofiOn ? (
+                <span className="eq-wave text-secondary" aria-hidden>
+                  <span></span><span></span><span></span><span></span>
+                </span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-outline"></span>
+              )}
             </button>
           </nav>
         </div>
@@ -670,11 +684,11 @@ export default function StudentPortalPage() {
               <div className="flex flex-col items-center justify-center my-2">
                 <div className="relative w-56 h-56 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                    <circle cx="100" cy="100" fill="transparent" r="82" stroke="#EBF2FF" strokeWidth="12"></circle>
+                    <circle cx="100" cy="100" fill="transparent" r="82" stroke="#E7E5E4" strokeWidth="12"></circle>
                     <defs>
                       <linearGradient id="timerGradient" x1="0%" x2="100%" y1="0%" y2="100%">
-                        <stop offset="0%" stopColor="#6BA4FF"></stop>
-                        <stop offset="100%" stopColor="#9D8DF1"></stop>
+                        <stop offset="0%" stopColor="#C2410C"></stop>
+                        <stop offset="100%" stopColor="#D97706"></stop>
                       </linearGradient>
                     </defs>
                     <circle
@@ -740,23 +754,35 @@ export default function StudentPortalPage() {
                   </button>
                 </div>
 
-                {/* Ambient Sound Selector */}
+                {/* Ambient Sound Selector — same engine as the sidebar toggle */}
                 <div className="pt-3 border-t border-outline-variant/30 flex items-center justify-between text-xs text-on-surface-variant">
-                  <span>Ambient Sound:</span>
+                  <span className="flex items-center gap-1.5">
+                    Ambient Sound:
+                    {ambient.playing && (
+                      <span className="eq-wave text-secondary" aria-hidden>
+                        <span></span><span></span><span></span><span></span>
+                      </span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-1.5">
-                    {["Lo-Fi", "Gentle Rain", "Library"].map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setSoundMode(s)}
-                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                          soundMode === s
-                            ? "bg-surface-container text-primary"
-                            : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
+                    {SOUND_OPTIONS.map(({ label, mode }) => {
+                      const on = ambient.playing && ambient.mode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={() => ambient.toggle(mode)}
+                          aria-pressed={on}
+                          title={on ? `Pause ${label}` : `Play ${label}`}
+                          className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                            on
+                              ? "bg-surface-container text-primary"
+                              : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -776,10 +802,7 @@ export default function StudentPortalPage() {
 
               <div className="flex flex-col gap-3 flex-1">
                 <button
-                  onClick={() => {
-                    setShowQuestModal(true);
-                    setActiveTab("journey");
-                  }}
+                  onClick={() => router.push("/student/journey")}
                   className="w-full p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between gap-3 card-hover-fx text-left"
                 >
                   <div className="flex items-center gap-3">
@@ -896,59 +919,59 @@ export default function StudentPortalPage() {
                     <div className="flex-1 min-w-0 grid grid-cols-6 gap-2 w-full">
                         {/* Week 1 */}
                         <div className="flex flex-col gap-2 min-w-0">
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 2.1 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 3.5 hrs, 2 classes"></div>
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 4.8 hrs, 3 classes"></div>
-                          <div className="h-6 rounded-md bg-[#9D8DF1] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 5.2 hrs, 4 classes"></div>
-                          <div className="h-6 rounded-md bg-[#C8B6FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 3.0 hrs, 2 classes"></div>
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 1.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 2.1 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 3.5 hrs, 2 classes"></div>
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 4.8 hrs, 3 classes"></div>
+                          <div className="h-6 rounded-md bg-[#D97706] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 5.2 hrs, 4 classes"></div>
+                          <div className="h-6 rounded-md bg-[#FDE68A] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 3.0 hrs, 2 classes"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 1.5 hrs"></div>
                           <div className="h-6 rounded-md bg-surface-container-low hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: Rest Day"></div>
                         </div>
                         {/* Week 2 */}
                         <div className="flex flex-col gap-2">
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 3.2 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 4.0 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#9D8DF1] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 5.1 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 3.2 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 4.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#D97706] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 5.1 hrs"></div>
                           <div className="h-6 rounded-md bg-secondary hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 6.0 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#C8B6FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.2 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 2.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 1.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDE68A] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.2 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 2.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 1.0 hrs"></div>
                         </div>
                         {/* Week 3 */}
                         <div className="flex flex-col gap-2">
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.1 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#9D8DF1] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 4.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 3.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.1 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#D97706] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 4.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 3.0 hrs"></div>
                           <div className="h-6 rounded-md bg-secondary hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 5.8 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#C8B6FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 2.8 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 3.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDE68A] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 2.8 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 3.0 hrs"></div>
                           <div className="h-6 rounded-md bg-surface-container-low hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: Rest Day"></div>
                         </div>
                         {/* Week 4 */}
                         <div className="flex flex-col gap-2">
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 3.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#9D8DF1] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 5.0 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 4.6 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 3.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#D97706] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Tue: 5.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 4.6 hrs"></div>
                           <div className="h-6 rounded-md bg-secondary hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 6.2 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#C8B6FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.0 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 1.8 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 2.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDE68A] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 1.8 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 2.0 hrs"></div>
                         </div>
                         {/* Week 5 */}
                         <div className="flex flex-col gap-2">
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#9D8DF1] ring-2 ring-secondary/50 hover:ring-primary cursor-pointer transition-all relative" title="Tue: 4.2 hrs attended">
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#D97706] ring-2 ring-secondary/50 hover:ring-primary cursor-pointer transition-all relative" title="Tue: 4.2 hrs attended">
                             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-secondary"></span>
                           </div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 3.9 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Wed: 3.9 hrs"></div>
                           <div className="h-6 rounded-md bg-secondary hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Thu: 5.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#C8B6FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.5 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#A0C4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 2.2 hrs"></div>
-                          <div className="h-6 rounded-md bg-[#EBF2FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 1.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDE68A] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Fri: 4.5 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FED7AA] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sat: 2.2 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#F5F5F4] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Sun: 1.5 hrs"></div>
                         </div>
                         {/* Current Week */}
                         <div className="flex flex-col gap-2">
-                          <div className="h-6 rounded-md bg-[#6BA4FF] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.0 hrs"></div>
+                          <div className="h-6 rounded-md bg-[#FDBA74] hover:ring-2 hover:ring-primary cursor-pointer transition-all" title="Mon: 4.0 hrs"></div>
                           <div className="h-6 rounded-md bg-primary-container ring-2 ring-primary cursor-pointer transition-all" title="Tue: 4.2 hrs (TODAY)"></div>
                           <div className="h-6 rounded-md bg-surface-container-low border border-dashed border-outline-variant cursor-pointer" title="Wed: Upcoming"></div>
                           <div className="h-6 rounded-md bg-surface-container-low border border-dashed border-outline-variant cursor-pointer" title="Thu: Scheduled"></div>
@@ -967,10 +990,10 @@ export default function StudentPortalPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span>Less active</span>
-                        <span className="w-3.5 h-3.5 rounded bg-[#EBF2FF]"></span>
-                        <span className="w-3.5 h-3.5 rounded bg-[#A0C4FF]"></span>
-                        <span className="w-3.5 h-3.5 rounded bg-[#6BA4FF]"></span>
-                        <span className="w-3.5 h-3.5 rounded bg-[#9D8DF1]"></span>
+                        <span className="w-3.5 h-3.5 rounded bg-[#F5F5F4]"></span>
+                        <span className="w-3.5 h-3.5 rounded bg-[#FED7AA]"></span>
+                        <span className="w-3.5 h-3.5 rounded bg-[#FDBA74]"></span>
+                        <span className="w-3.5 h-3.5 rounded bg-[#D97706]"></span>
                         <span className="w-3.5 h-3.5 rounded bg-secondary"></span>
                         <span>Highly active</span>
                       </div>

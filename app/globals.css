@@ -1,54 +1,54 @@
 @import 'tailwindcss';
 
 @theme {
-  /* ==== JustFormi palette (ported from Tailwind CDN config) ==== */
-  --color-on-surface: #111c2d;
-  --color-surface-dim: #cfdaf2;
-  --color-on-tertiary: #ffffff;
-  --color-on-tertiary-fixed-variant: #4c3c7c;
-  --color-outline: #727783;
-  --color-surface-container: #e7eeff;
-  --color-secondary-fixed: #e6deff;
-  --color-secondary: #6050af;
-  --color-inverse-on-surface: #ecf1ff;
+  /* ==== Warm editorial palette (terracotta / sage / amber on stone) ==== */
+  --color-on-surface: #1c1917;
+  --color-surface-dim: #d6d3d1;
+  --color-on-tertiary: #fffbeb;
+  --color-on-tertiary-fixed-variant: #92400e;
+  --color-outline: #a8a29e;
+  --color-surface-container: #efedea;
+  --color-secondary-fixed: #dcfce7;
+  --color-secondary: #15803d;
+  --color-inverse-on-surface: #fafaf9;
   --color-surface-container-lowest: #ffffff;
-  --color-secondary-container: #a898fd;
-  --color-on-error-container: #93000a;
-  --color-on-secondary-fixed-variant: #483795;
-  --color-on-secondary: #ffffff;
-  --color-on-tertiary-container: #3e2f6e;
-  --color-inverse-primary: #aac7ff;
-  --color-on-secondary-container: #3c2a89;
+  --color-secondary-container: #86efac;
+  --color-on-error-container: #7f1d1d;
+  --color-on-secondary-fixed-variant: #052e16;
+  --color-on-secondary: #f0fdf4;
+  --color-on-tertiary-container: #451a03;
+  --color-inverse-primary: #fdba74;
+  --color-on-secondary-container: #052e16;
   --color-on-error: #ffffff;
-  --color-tertiary: #645495;
-  --color-on-primary-fixed: #001b3e;
-  --color-primary-fixed: #d6e3ff;
-  --color-primary-container: #6ba4ff;
-  --color-surface-container-low: #f0f3ff;
-  --color-on-primary-fixed-variant: #00468d;
-  --color-inverse-surface: #263143;
-  --color-surface-container-high: #dee8ff;
-  --color-on-tertiary-fixed: #200d4e;
-  --color-on-primary: #ffffff;
-  --color-tertiary-fixed-dim: #cebdff;
-  --color-tertiary-container: #aa99e0;
-  --color-secondary-fixed-dim: #c9beff;
-  --color-surface-container-highest: #d8e3fb;
-  --color-primary-fixed-dim: #aac7ff;
-  --color-error: #ba1a1a;
-  --color-on-primary-container: #003975;
-  --color-primary: #115db4;
-  --color-surface: #f9f9ff;
-  --color-error-container: #ffdad6;
-  --color-tertiary-fixed: #e8ddff;
-  --color-surface-variant: #d8e3fb;
-  --color-on-background: #111c2d;
-  --color-on-secondary-fixed: #1b0062;
-  --color-background: #f9f9ff;
-  --color-surface-tint: #115db4;
-  --color-surface-bright: #f9f9ff;
-  --color-outline-variant: #c2c6d4;
-  --color-on-surface-variant: #424752;
+  --color-tertiary: #d97706;
+  --color-on-primary-fixed: #431407;
+  --color-primary-fixed: #ffedd5;
+  --color-primary-container: #fed7aa;
+  --color-surface-container-low: #f5f5f4;
+  --color-on-primary-fixed-variant: #9a3412;
+  --color-inverse-surface: #1c1917;
+  --color-surface-container-high: #e7e5e4;
+  --color-on-tertiary-fixed: #451a03;
+  --color-on-primary: #fff7ed;
+  --color-tertiary-fixed-dim: #fcd34a;
+  --color-tertiary-container: #fde68a;
+  --color-secondary-fixed-dim: #bbf7d0;
+  --color-surface-container-highest: #d6d3d1;
+  --color-primary-fixed-dim: #fdba74;
+  --color-error: #b91c1c;
+  --color-on-primary-container: #431407;
+  --color-primary: #c2410c;
+  --color-surface: #fafaf9;
+  --color-error-container: #fee2e2;
+  --color-tertiary-fixed: #fef3c7;
+  --color-surface-variant: #e7e5e4;
+  --color-on-background: #1c1917;
+  --color-on-secondary-fixed: #052e16;
+  --color-background: #fafaf9;
+  --color-surface-tint: #c2410c;
+  --color-surface-bright: #fafaf9;
+  --color-outline-variant: #e7e5e4;
+  --color-on-surface-variant: #78716c;
 
   /* ==== Type scale tokens (text-label-md, font-label-md, etc.) ==== */
   --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -240,20 +240,20 @@ body {
   line-height: 1;
 }
 
-/* ================= JustFormi card helpers ================= */
+/* ================= JustFormi card helpers (warm editorial) ================= */
 .jf-portal {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-color: #f9f9ff;
-  color: #111c2d;
+  background-color: #fafaf9;
+  color: #1c1917;
   min-height: 100vh;
 }
 
 .custom-ring-glow {
-  box-shadow: 0 4px 20px -2px rgba(107, 164, 255, 0.22), 0 2px 10px -1px rgba(157, 141, 241, 0.16);
+  box-shadow: 0 4px 20px -2px rgba(194, 65, 12, 0.22), 0 2px 10px -1px rgba(217, 119, 6, 0.16);
 }
 
 .pastel-card-shadow {
-  box-shadow: 0 4px 24px -2px rgba(107, 164, 255, 0.08), 0 2px 8px -1px rgba(157, 141, 241, 0.05);
+  box-shadow: 0 4px 24px -2px rgba(120, 113, 108, 0.12), 0 2px 8px -1px rgba(120, 113, 108, 0.08);
 }
 
 .card-hover-fx {
@@ -262,7 +262,55 @@ body {
 
 .card-hover-fx:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(107, 164, 255, 0.14), 0 4px 10px -2px rgba(157, 141, 241, 0.08);
+  box-shadow: 0 12px 28px -4px rgba(194, 65, 12, 0.14), 0 4px 10px -2px rgba(217, 119, 6, 0.1);
+}
+
+/* ================= Light quest tiles inside editorial pages ================= */
+.jf-portal .eq-tile {
+  background: #ffffff;
+  border: 1px solid #e7e5e4;
+  color: #78716c;
+  box-shadow: 0 2px 8px rgba(120, 113, 108, 0.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.jf-portal .eq-tile.open {
+  background: linear-gradient(160deg, #ffedd5, #ffffff);
+  border-color: #c2410c;
+  color: #431407;
+  box-shadow: 0 6px 18px rgba(194, 65, 12, 0.18);
+}
+.jf-portal .eq-tile.mastered {
+  background: linear-gradient(160deg, #dcfce7, #ffffff);
+  border-color: #15803d;
+  color: #052e16;
+}
+.jf-portal .eq-tile.active {
+  outline: 2px solid #c2410c;
+}
+
+/* ================= Ambient audio playing indicator ================= */
+.eq-wave {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.eq-wave span {
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: eqwave 0.9s ease-in-out infinite;
+}
+.eq-wave span:nth-child(2) { animation-delay: 0.15s; }
+.eq-wave span:nth-child(3) { animation-delay: 0.3s; }
+.eq-wave span:nth-child(4) { animation-delay: 0.45s; }
+@keyframes eqwave {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-wave span { animation: none; height: 8px; }
 }
 
 /* ================= Quest map animations ================= */
